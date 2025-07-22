@@ -79,7 +79,7 @@ if products_file and schedule_file:
                     workbook = writer.book
                     header_format = workbook.add_format({'bold': True})
 
-                    summary_data = []  # لتجميع المنتجات اللي فيها فرق
+                    summary_data = []
 
                     for brand in result_df['Brand'].unique():
                         brand_df = result_df[result_df['Brand'] == brand].copy()
@@ -102,18 +102,11 @@ if products_file and schedule_file:
                             formula = f"=G{row+1}-F{row+1}"
                             worksheet.write_formula(row, 7, formula)
 
-                            # لو Actual فاضي، ما تضفهاش للـ summary
-                            if brand_df.iloc[row-1]['Actual Quantity'] != '':
-                                try:
-                                    actual = float(brand_df.iloc[row-1]['Actual Quantity'])
-                                    available = float(brand_df.iloc[row-1]['Available Quantity'])
-                                    if actual != available:
-                                        product_name = brand_df.iloc[row-1]['Product Name']
-                                        summary_data.append((product_name, formula))
-                                except:
-                                    pass  # يتجاهل الخانات غير الرقمية
+                            # Add all products to summary (assuming all have differences initially)
+                            product_name = brand_df.iloc[row-1]['Product Name']
+                            summary_data.append((product_name, formula))
 
-                    # ===== Create Summary Sheet at the beginning =====
+                    # Create Summary Sheet
                     summary_sheet = workbook.add_worksheet('Summary')
                     summary_sheet.write(0, 0, 'Product Name', header_format)
                     summary_sheet.write(0, 1, 'Difference', header_format)
@@ -122,15 +115,13 @@ if products_file and schedule_file:
                         summary_sheet.write(idx, 0, product)
                         summary_sheet.write_formula(idx, 1, formula)
 
-                    # Auto width for both columns
                     max_product_len = max([len(str(p)) for p, _ in summary_data] + [12])
                     summary_sheet.set_column(0, 0, max_product_len + 2)
                     summary_sheet.set_column(1, 1, 12)
 
-                    # تأكد إن شيت Summary هو أول واحد
+                    # Move Summary sheet to first position
                     workbook.worksheets_objs.insert(0, workbook.worksheets_objs.pop())
 
-                # Save file with branch name + date
                 file_name = f"{today_branches[0]}_{today.strftime('%Y-%m-%d')}.xlsx"
 
                 st.download_button(

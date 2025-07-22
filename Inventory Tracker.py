@@ -123,7 +123,7 @@ if products_file and schedule_file:
                     # Move Summary to first position
                     workbook.worksheets_objs.insert(0, workbook.worksheets_objs.pop())
 
-                file_name = f"{today_branches[0]}_{today.strftime('%Y-%m-%d')}.xlsx"
+                file_name = f"{today_branches[0]}_{today.strftime('%Y-%m-%d')}.xlsm"
 
                 st.download_button(
                     label="📥 Download Final Excel File",

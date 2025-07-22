@@ -105,8 +105,7 @@ if products_file and schedule_file:
                             'bg_color': '#4F81BD',
                             'align': 'center'
                         })
-                        worksheet.write('J1', 'Scan Here', scan_format)
-                        worksheet.write('J2', '⬇️', workbook.add_format({'align': 'center'}))
+         worksheet.write('J1', 'Scan Here ⬇️', scan_format)
 
                     # Create Summary Sheet
                     summary_sheet = workbook.add_worksheet('Summary')

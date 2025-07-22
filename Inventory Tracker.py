@@ -109,9 +109,9 @@ if products_file and schedule_file:
                         written_products.add(product)
                         summary_sheet.write(idx, 0, product)
 
-                        # Build formula to check all brand sheets
+                        # Build formula using INDEX/MATCH instead of XLOOKUP
                         formula_parts = [
-                            f'IFERROR(XLOOKUP(A{idx+1}, \'{sheet}\'!C:C, \'{sheet}\'!H:H, 0), 0)'
+                            f"N(IFERROR(INDEX('{sheet}'!H:H, MATCH(A{idx+1}, '{sheet}'!C:C, 0)), 0))"
                             for sheet in brand_sheets
                         ]
                         full_formula = f"={' + '.join(formula_parts)}"

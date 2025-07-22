@@ -96,8 +96,6 @@ if products_file and schedule_file:
 
                         # Auto-fit "J" column for Scan Here
                         worksheet.set_column('J:J', 16)
-
-                        # Write Scan instruction in J1
                         worksheet.write('J1', 'Scan Here ⬇️', scan_format)
 
                         row_count = len(brand_df)
@@ -110,7 +108,7 @@ if products_file and schedule_file:
                             product_name = brand_df.iloc[row-1]['Product Name']
                             summary_products.append(product_name)
 
-                    # Create Summary Sheet
+                    # Summary Sheet
                     summary_sheet = workbook.add_worksheet('Summary')
                     summary_sheet.write(0, 0, 'Product Name', header_format)
                     summary_sheet.write(0, 1, 'Difference', header_format)
@@ -121,7 +119,6 @@ if products_file and schedule_file:
                             continue
                         written_products.add(product)
                         summary_sheet.write(idx, 0, product)
-
                         formula_parts = [
                             f"N(IFERROR(INDEX('{sheet}'!H:H, MATCH(A{idx+1}, '{sheet}'!C:C, 0)), 0))"
                             for sheet in brand_sheets
@@ -132,8 +129,22 @@ if products_file and schedule_file:
                     summary_sheet.set_column(0, 0, max([len(p) for p in written_products] + [12]) + 4)
                     summary_sheet.set_column(1, 1, 15)
 
-                    # Move Summary to first position
-                    workbook.worksheets_objs.insert(0, workbook.worksheets_objs.pop())
+                    # All Products Sheet
+                    all_products_df = df[['barcodes', 'name_ar']].dropna().drop_duplicates(subset='barcodes')
+                    all_products_df.columns = ['Barcodes', 'Product Name']
+                    all_products_df.to_excel(writer, sheet_name='All Products', index=False)
+
+                    all_ws = writer.sheets['All Products']
+                    all_ws.write(0, 0, 'Barcodes', header_format)
+                    all_ws.write(0, 1, 'Product Name', header_format)
+
+                    max_barcode_len = all_products_df['Barcodes'].astype(str).map(len).max()
+                    max_name_len = all_products_df['Product Name'].astype(str).map(len).max()
+                    all_ws.set_column(0, 0, max(max_barcode_len, len('Barcodes')) + 4)
+                    all_ws.set_column(1, 1, max(max_name_len, len('Product Name')) + 4)
+
+                    # Move Summary sheet to first position
+                    workbook.worksheets_objs.insert(0, workbook.worksheets_objs.pop(-2))
 
                 file_name = f"{today_branches[0]}_{today.strftime('%Y-%m-%d')}.xlsx"
 

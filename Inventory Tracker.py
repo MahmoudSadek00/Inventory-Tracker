@@ -76,6 +76,11 @@ if products_file and schedule_file:
                 output = BytesIO()
 
                 with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                    workbook = writer.book
+                    header_format = workbook.add_format({'bold': True})
+
+                    summary_data = []  # لتجميع الـ Summary
+
                     for brand in result_df['Brand'].unique():
                         brand_df = result_df[result_df['Brand'] == brand].copy()
                         brand_df = brand_df[['Branch', 'Brand', 'Product Name', 'Category', 'Barcodes', 'Available Quantity', 'Actual Quantity']]
@@ -83,9 +88,7 @@ if products_file and schedule_file:
                         sheet_name = brand[:31]
                         brand_df.to_excel(writer, sheet_name=sheet_name, index=False, startrow=1, header=False)
 
-                        workbook = writer.book
                         worksheet = writer.sheets[sheet_name]
-                        header_format = workbook.add_format({'bold': True})
 
                         for col_num, col_name in enumerate(brand_df.columns):
                             worksheet.write(0, col_num, col_name, header_format)
@@ -97,6 +100,27 @@ if products_file and schedule_file:
                         for row in range(1, row_count + 1):
                             formula = f"=G{row+1}-F{row+1}"
                             worksheet.write_formula(row, 7, formula)
+
+                            # Add to summary
+                            product_name = brand_df.iloc[row-1]['Product Name']
+                            summary_data.append((product_name, formula))
+
+                    # ===== Create Summary Sheet at the beginning =====
+                    summary_sheet = workbook.add_worksheet('Summary')
+                    summary_sheet.write(0, 0, 'Product Name', header_format)
+                    summary_sheet.write(0, 1, 'Difference', header_format)
+
+                    for idx, (product, formula) in enumerate(summary_data, start=1):
+                        summary_sheet.write(idx, 0, product)
+                        summary_sheet.write_formula(idx, 1, formula)
+
+                    # Auto width for both columns
+                    max_product_len = max([len(str(p)) for p, _ in summary_data] + [12])
+                    summary_sheet.set_column(0, 0, max_product_len + 2)
+                    summary_sheet.set_column(1, 1, 12)
+
+                    # تأكد إن شيت Summary هو أول واحد
+                    workbook.worksheets_objs.insert(0, workbook.worksheets_objs.pop())
 
                 # Save file with branch name + date
                 file_name = f"{today_branches[0]}_{today.strftime('%Y-%m-%d')}.xlsx"

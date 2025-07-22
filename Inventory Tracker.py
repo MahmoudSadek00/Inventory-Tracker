@@ -69,6 +69,13 @@ if products_file and schedule_file:
                 with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                     workbook = writer.book
                     header_format = workbook.add_format({'bold': True})
+                    scan_format = workbook.add_format({
+                        'bold': True,
+                        'font_color': 'white',
+                        'bg_color': '#4F81BD',
+                        'align': 'center'
+                    })
+
                     brand_sheets = []
                     summary_products = []
 
@@ -81,31 +88,23 @@ if products_file and schedule_file:
                         worksheet = writer.sheets[sheet_name]
                         brand_sheets.append(sheet_name)
 
-                        # Format header and columns
                         for col_num, col_name in enumerate(brand_df.columns):
                             worksheet.write(0, col_num, col_name, header_format)
                             max_len = max(brand_df[col_name].astype(str).map(len).max(), len(col_name))
                             worksheet.set_column(col_num, col_num, max_len + 2)
 
-                        # Add Difference column
                         row_count = len(brand_df)
                         worksheet.write(0, 7, 'Difference', header_format)
+
                         for row in range(1, row_count + 1):
                             formula = f"=G{row+1}-F{row+1}"
                             worksheet.write_formula(row, 7, formula)
 
-                            # Track product name for summary
                             product_name = brand_df.iloc[row-1]['Product Name']
                             summary_products.append(product_name)
 
-                        # ✨ Add Scan Here in J1 + arrow in J2
-                        scan_format = workbook.add_format({
-                            'bold': True,
-                            'font_color': 'white',
-                            'bg_color': '#4F81BD',
-                            'align': 'center'
-                        })
-         worksheet.write('J1', 'Scan Here ⬇️', scan_format)
+                        # ✨ Add Scan Here with arrow in J1
+                        worksheet.write('J1', 'Scan Here ⬇️', scan_format)
 
                     # Create Summary Sheet
                     summary_sheet = workbook.add_worksheet('Summary')
@@ -119,7 +118,6 @@ if products_file and schedule_file:
                         written_products.add(product)
                         summary_sheet.write(idx, 0, product)
 
-                        # Use INDEX/MATCH instead of XLOOKUP
                         formula_parts = [
                             f"N(IFERROR(INDEX('{sheet}'!H:H, MATCH(A{idx+1}, '{sheet}'!C:C, 0)), 0))"
                             for sheet in brand_sheets

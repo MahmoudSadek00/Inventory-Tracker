@@ -91,7 +91,7 @@ if products_file and schedule_file:
                         for col_num, col_name in enumerate(brand_df.columns):
                             worksheet.write(0, col_num, col_name, header_format)
                             max_len = max(brand_df[col_name].astype(str).map(len).max(), len(col_name))
-                            worksheet.set_column(col_num, col_num, max_len + 2)
+                            worksheet.set_column(col_num, col_num, max_len + 4)  # ← auto-fit columns
 
                         row_count = len(brand_df)
                         worksheet.write(0, 7, 'Difference', header_format)
@@ -103,7 +103,7 @@ if products_file and schedule_file:
                             product_name = brand_df.iloc[row-1]['Product Name']
                             summary_products.append(product_name)
 
-                        # ✨ Add Scan Here with arrow in J1
+                        # Add "Scan Here ⬇️" in J1
                         worksheet.write('J1', 'Scan Here ⬇️', scan_format)
 
                     # Create Summary Sheet
@@ -125,7 +125,7 @@ if products_file and schedule_file:
                         full_formula = f"={' + '.join(formula_parts)}"
                         summary_sheet.write_formula(idx, 1, full_formula)
 
-                    summary_sheet.set_column(0, 0, max([len(p) for p in written_products] + [12]) + 2)
+                    summary_sheet.set_column(0, 0, max([len(p) for p in written_products] + [12]) + 4)
                     summary_sheet.set_column(1, 1, 15)
 
                     # Move Summary to first position

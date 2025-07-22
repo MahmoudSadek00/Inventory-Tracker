@@ -79,7 +79,7 @@ if products_file and schedule_file:
                     workbook = writer.book
                     header_format = workbook.add_format({'bold': True})
 
-                    summary_data = []  # لتجميع الـ Summary
+                    summary_data = []  # لتجميع المنتجات اللي فيها فرق
 
                     for brand in result_df['Brand'].unique():
                         brand_df = result_df[result_df['Brand'] == brand].copy()
@@ -97,13 +97,21 @@ if products_file and schedule_file:
 
                         row_count = len(brand_df)
                         worksheet.write(0, 7, 'Difference', header_format)
+
                         for row in range(1, row_count + 1):
                             formula = f"=G{row+1}-F{row+1}"
                             worksheet.write_formula(row, 7, formula)
 
-                            # Add to summary
-                            product_name = brand_df.iloc[row-1]['Product Name']
-                            summary_data.append((product_name, formula))
+                            # لو Actual فاضي، ما تضفهاش للـ summary
+                            if brand_df.iloc[row-1]['Actual Quantity'] != '':
+                                try:
+                                    actual = float(brand_df.iloc[row-1]['Actual Quantity'])
+                                    available = float(brand_df.iloc[row-1]['Available Quantity'])
+                                    if actual != available:
+                                        product_name = brand_df.iloc[row-1]['Product Name']
+                                        summary_data.append((product_name, formula))
+                                except:
+                                    pass  # يتجاهل الخانات غير الرقمية
 
                     # ===== Create Summary Sheet at the beginning =====
                     summary_sheet = workbook.add_worksheet('Summary')

@@ -9,7 +9,6 @@ st.title("📦 Domanza Inventory Application")
 products_file = st.file_uploader("Upload Products File (CSV or Excel)", type=['csv', 'xlsx', 'xls'])
 schedule_file = st.file_uploader("Upload Schedule Sheet (CSV or Excel)", type=['csv', 'xlsx', 'xls'])
 
-# Helper function to read file
 def read_file(file):
     if file.name.endswith('.csv'):
         return pd.read_csv(file)
@@ -18,11 +17,9 @@ def read_file(file):
 
 if products_file and schedule_file:
     try:
-        # Load data
         df = read_file(products_file)
         schedule_df = read_file(schedule_file)
 
-        # Clean schedule sheet
         schedule_df = schedule_df.iloc[:, :3]
         schedule_df.columns = ['Branch', 'Date', 'Brand']
         schedule_df['Date'] = pd.to_datetime(schedule_df['Date'], errors='coerce')
@@ -34,15 +31,11 @@ if products_file and schedule_file:
         today_brands = today_schedule['Brand'].dropna().unique().tolist()
         today_branches = today_schedule['Branch'].dropna().unique().tolist()
 
-        # Extract brand from name_ar
         df['brand'] = df['name_ar'].apply(lambda x: x.split('-')[0].strip() if pd.notnull(x) else "")
-
-        # Extract category from name_ar (word after 3rd dash)
         df['Category'] = df['name_ar'].apply(
             lambda x: x.split('-')[3].strip() if pd.notnull(x) and len(x.split('-')) > 3 else ""
         )
 
-        # Columns check
         columns_needed = ['brand', 'name_ar', 'barcodes', 'available_quantity', 'branch_name', 'Category']
         missing_cols = [col for col in columns_needed if col not in df.columns]
 
@@ -50,7 +43,6 @@ if products_file and schedule_file:
             st.error(f"❌ Missing required columns: {missing_cols}")
         else:
             result_df = df[columns_needed].copy()
-
             result_df = result_df.rename(columns={
                 'brand': 'Brand',
                 'name_ar': 'Product Name',
@@ -59,7 +51,6 @@ if products_file and schedule_file:
                 'branch_name': 'Branch'
             })
 
-            # Filter by today’s brand and branch
             result_df = result_df[
                 result_df['Brand'].isin(today_brands) &
                 result_df['Branch'].isin(today_branches)
@@ -78,17 +69,17 @@ if products_file and schedule_file:
                 with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                     workbook = writer.book
                     header_format = workbook.add_format({'bold': True})
-
-                    summary_data = []
+                    brand_sheets = []
+                    summary_products = []
 
                     for brand in result_df['Brand'].unique():
                         brand_df = result_df[result_df['Brand'] == brand].copy()
                         brand_df = brand_df[['Branch', 'Brand', 'Product Name', 'Category', 'Barcodes', 'Available Quantity', 'Actual Quantity']]
-
                         sheet_name = brand[:31]
                         brand_df.to_excel(writer, sheet_name=sheet_name, index=False, startrow=1, header=False)
 
                         worksheet = writer.sheets[sheet_name]
+                        brand_sheets.append(sheet_name)
 
                         for col_num, col_name in enumerate(brand_df.columns):
                             worksheet.write(0, col_num, col_name, header_format)
@@ -102,24 +93,34 @@ if products_file and schedule_file:
                             formula = f"=G{row+1}-F{row+1}"
                             worksheet.write_formula(row, 7, formula)
 
-                            # Add all products to summary (assuming all have differences initially)
+                            # Track products for summary
                             product_name = brand_df.iloc[row-1]['Product Name']
-                            summary_data.append((product_name, formula))
+                            summary_products.append(product_name)
 
                     # Create Summary Sheet
                     summary_sheet = workbook.add_worksheet('Summary')
                     summary_sheet.write(0, 0, 'Product Name', header_format)
                     summary_sheet.write(0, 1, 'Difference', header_format)
 
-                    for idx, (product, formula) in enumerate(summary_data, start=1):
+                    written_products = set()
+                    for idx, product in enumerate(summary_products, start=1):
+                        if product in written_products:
+                            continue
+                        written_products.add(product)
                         summary_sheet.write(idx, 0, product)
-                        summary_sheet.write_formula(idx, 1, formula)
 
-                    max_product_len = max([len(str(p)) for p, _ in summary_data] + [12])
-                    summary_sheet.set_column(0, 0, max_product_len + 2)
-                    summary_sheet.set_column(1, 1, 12)
+                        # Build formula to check all brand sheets
+                        formula_parts = [
+                            f'IFERROR(XLOOKUP(A{idx+1}, \'{sheet}\'!C:C, \'{sheet}\'!H:H, 0), 0)'
+                            for sheet in brand_sheets
+                        ]
+                        full_formula = f"={' + '.join(formula_parts)}"
+                        summary_sheet.write_formula(idx, 1, full_formula)
 
-                    # Move Summary sheet to first position
+                    summary_sheet.set_column(0, 0, max([len(p) for p in written_products] + [12]) + 2)
+                    summary_sheet.set_column(1, 1, 15)
+
+                    # Move Summary to first position
                     workbook.worksheets_objs.insert(0, workbook.worksheets_objs.pop())
 
                 file_name = f"{today_branches[0]}_{today.strftime('%Y-%m-%d')}.xlsx"

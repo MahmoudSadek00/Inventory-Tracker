@@ -78,6 +78,7 @@ if products_file and schedule_file:
 
                     brand_sheets = []
                     summary_products = []
+                    summary_barcodes = []
 
                     for brand in result_df['Brand'].unique():
                         brand_df = result_df[result_df['Brand'] == brand].copy()
@@ -94,7 +95,6 @@ if products_file and schedule_file:
                             extra_padding = 8 if col_name in ["Product Name", "Difference"] else 4
                             worksheet.set_column(col_num, col_num, max_len + extra_padding)
 
-                        # Auto-fit "J" column for Scan Here
                         worksheet.set_column('J:J', 16)
                         worksheet.write('J1', 'Scan Here ⬇️', scan_format)
 
@@ -106,28 +106,38 @@ if products_file and schedule_file:
                             worksheet.write_formula(row, 7, formula)
 
                             product_name = brand_df.iloc[row-1]['Product Name']
+                            barcode_value = brand_df.iloc[row-1]['Barcodes']
                             summary_products.append(product_name)
+                            summary_barcodes.append(barcode_value)
 
                     # Summary Sheet
                     summary_sheet = workbook.add_worksheet('Summary')
                     summary_sheet.write(0, 0, 'Product Name', header_format)
-                    summary_sheet.write(0, 1, 'Difference', header_format)
+                    summary_sheet.write(0, 1, 'Barcode', header_format)
+                    summary_sheet.write(0, 2, 'Difference', header_format)
 
                     written_products = set()
-                    for idx, product in enumerate(summary_products, start=1):
+                    row_idx = 1
+
+                    for product, barcode in zip(summary_products, summary_barcodes):
                         if product in written_products:
                             continue
                         written_products.add(product)
-                        summary_sheet.write(idx, 0, product)
+                        summary_sheet.write(row_idx, 0, product)
+                        summary_sheet.write(row_idx, 1, barcode)
+
                         formula_parts = [
-                            f"N(IFERROR(INDEX('{sheet}'!H:H, MATCH(A{idx+1}, '{sheet}'!C:C, 0)), 0))"
+                            f"N(IFERROR(INDEX('{sheet}'!H:H, MATCH(A{row_idx+1}, '{sheet}'!C:C, 0)), 0))"
                             for sheet in brand_sheets
                         ]
                         full_formula = f"={' + '.join(formula_parts)}"
-                        summary_sheet.write_formula(idx, 1, full_formula)
+                        summary_sheet.write_formula(row_idx, 2, full_formula)
+
+                        row_idx += 1
 
                     summary_sheet.set_column(0, 0, max([len(p) for p in written_products] + [12]) + 4)
-                    summary_sheet.set_column(1, 1, 15)
+                    summary_sheet.set_column(1, 1, 20)
+                    summary_sheet.set_column(2, 2, 15)
 
                     # All Products Sheet
                     all_products_df = df[['barcodes', 'name_ar']].dropna().drop_duplicates(subset='barcodes')
@@ -143,7 +153,7 @@ if products_file and schedule_file:
                     all_ws.set_column(0, 0, max(max_barcode_len, len('Barcodes')) + 4)
                     all_ws.set_column(1, 1, max(max_name_len, len('Product Name')) + 4)
 
-                    # Move Summary sheet to first position
+                    # Move Summary to first position
                     workbook.worksheets_objs.insert(0, workbook.worksheets_objs.pop(-2))
 
                 file_name = f"{today_branches[0]}_{today.strftime('%Y-%m-%d')}.xlsx"

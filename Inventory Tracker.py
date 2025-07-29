@@ -1,11 +1,12 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+from zoneinfo import ZoneInfo  # علشان نضبط التوقيت على مصر
 
 st.set_page_config(page_title="Domanza Inventory Application", layout="wide")
 st.title("📦 Domanza Inventory Application")
 
-# Uploading files
+# رفع الملفات
 products_file = st.file_uploader("Upload Products File (CSV or Excel)", type=['csv', 'xlsx', 'xls'])
 schedule_file = st.file_uploader("Upload Schedule Sheet (CSV or Excel)", type=['csv', 'xlsx', 'xls'])
 
@@ -20,23 +21,29 @@ if products_file and schedule_file:
         df = read_file(products_file)
         schedule_df = read_file(schedule_file)
 
-        # معالجة التاريخ وضمان عدم وجود وقت
+        # تجهيز بيانات الجدول
         schedule_df = schedule_df.iloc[:, :3]
         schedule_df.columns = ['Branch', 'Date', 'Brand']
         schedule_df['Date'] = pd.to_datetime(schedule_df['Date'], errors='coerce').dt.date
         schedule_df = schedule_df.dropna(subset=['Date'])
 
-        today = datetime.today().date()
+        # تاريخ اليوم حسب توقيت مصر
+        today = datetime.now(ZoneInfo("Africa/Cairo")).date()
 
-        # للتأكد من وجود التاريخ فعلاً
-        st.write("📅 Dates in Schedule:", schedule_df['Date'].unique())
-        st.write("📍 Today's Date:", today)
+        # DEBUG: طباعة التواريخ الموجودة والمستخدمة
+        st.write("📍 Today's Date (from system):", today)
+        st.write("📅 Dates in schedule file:", schedule_df['Date'].unique())
 
+        # فلترة الجدول حسب التاريخ
         today_schedule = schedule_df[schedule_df['Date'] == today]
+
+        if today_schedule.empty:
+            st.warning("⚠️ No schedule found for today.")
 
         today_brands = today_schedule['Brand'].dropna().unique().tolist()
         today_branches = today_schedule['Branch'].dropna().unique().tolist()
 
+        # تجهيز بيانات المنتجات
         df['brand'] = df['name_ar'].apply(lambda x: x.split('-')[0].strip() if pd.notnull(x) else "")
         df['Category'] = df['name_ar'].apply(
             lambda x: x.split('-')[3].strip() if pd.notnull(x) and len(x.split('-')) > 3 else ""

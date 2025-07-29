@@ -20,12 +20,18 @@ if products_file and schedule_file:
         df = read_file(products_file)
         schedule_df = read_file(schedule_file)
 
+        # معالجة التاريخ وضمان عدم وجود وقت
         schedule_df = schedule_df.iloc[:, :3]
         schedule_df.columns = ['Branch', 'Date', 'Brand']
-        schedule_df['Date'] = pd.to_datetime(schedule_df['Date'], errors='coerce')
+        schedule_df['Date'] = pd.to_datetime(schedule_df['Date'], errors='coerce').dt.date
         schedule_df = schedule_df.dropna(subset=['Date'])
 
-        today = pd.to_datetime(datetime.today().date())
+        today = datetime.today().date()
+
+        # للتأكد من وجود التاريخ فعلاً
+        st.write("📅 Dates in Schedule:", schedule_df['Date'].unique())
+        st.write("📍 Today's Date:", today)
+
         today_schedule = schedule_df[schedule_df['Date'] == today]
 
         today_brands = today_schedule['Brand'].dropna().unique().tolist()
